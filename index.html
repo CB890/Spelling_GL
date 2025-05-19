@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friendly Spelling Quiz</title>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            background-color: #f0f8ff;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background-image: radial-gradient(circle, #ffffff, #e3f2fd);
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+            margin-top: 30px;
+        }
+        
+        h1 {
+            color: #4a6da7;
+            margin-bottom: 20px;
+        }
+        
+        .welcome-screen, .question-screen, .results-screen, .review-screen {
+            display: none;
+        }
+        
+        .active {
+            display: block;
+        }
+        
+        p {
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        
+        button {
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            background-color: #4cae4c;
+            transform: translateY(-2px);
+        }
+        
+        .replay-btn {
+            background-color: #5bc0de;
+        }
+        
+        .replay-btn:hover {
+            background-color: #46b8da;
+        }
+        
+        .submit-btn {
+            background-color: #f0ad4e;
+        }
+        
+        .submit-btn:hover {
+            background-color: #eea236;
+        }
+        
+        input[type="text"] {
+            padding: 12px;
+            font-size: 18px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            width: 80%;
+            margin: 15px 0;
+            text-align: center;
+        }
+        
+        input[type="text"]:focus {
+            border-color: #5cb85c;
+            outline: none;
+        }
+        
+        .feedback {
+            margin: 15px 0;
+            font-weight: bold;
+            min-height: 30px;
+        }
+        
+        .correct {
+            color: #5cb85c;
+        }
+        
+        .incorrect {
+            color: #d9534f;
+        }
+        
+        .progress {
+            margin: 20px 0;
+            font-size: 16px;
+            color: #777;
+        }
+        
+        .character {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            height: 100px;
+            background-image: url('/api/placeholder/100/100');
+            background-size: contain;
+            background-repeat: no-repeat;
+        }
+        
+        .review-item {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+            background-color: #f9f9f9;
+            border-left: 5px solid #ddd;
+        }
+        
+        .review-item.correct {
+            border-left-color: #5cb85c;
+            background-color: rgba(92, 184, 92, 0.1);
+        }
+        
+        .review-item.incorrect {
+            border-left-color: #d9534f;
+            background-color: rgba(217, 83, 79, 0.1);
+        }
+        
+        .review-item p {
+            margin: 5px 0;
+        }
+        
+        .review-word {
+            font-weight: bold;
+            font-size: 20px;
+        }
+        
+        #review-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+                width: 95%;
+            }
+            
+            input[type="text"] {
+                width: 90%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Welcome Screen -->
+        <div class="welcome-screen active">
+            <h1>Welcome to the Spelling Quiz!</h1>
+            <p>You'll hear a word and a sentence. Listen carefully, then type the word.</p>
+            <p>Don't worry if you need to hear it again - you can press the replay button up to 2 times for each question.</p>
+            <p>Good luck and have fun!</p>
+            <button id="start-btn">Start Quiz</button>
+        </div>
+        
+        <!-- Question Screen -->
+        <div class="question-screen">
+            <h1>Listen and Spell</h1>
+            <p id="question-number" class="progress">Question 1 of 8</p>
+            <button id="play-btn">Play Word</button>
+            <button id="replay-btn" class="replay-btn" disabled>Replay (2 left)</button>
+            <div>
+                <input type="text" id="answer-input" placeholder="Type your answer here...">
+            </div>
+            <button id="submit-btn" class="submit-btn">Check Answer</button>
+            <p id="feedback" class="feedback"></p>
+        </div>
+        
+        <!-- Results Screen -->
+        <div class="results-screen">
+            <h1>Well Done!</h1>
+            <p id="results-text">You got X out of 8 correct!</p>
+            <p id="encouragement">Great effort! Keep practicing to become a spelling champion!</p>
+            <button id="review-btn">See Your Answers</button>
+            <button id="restart-btn">Try Again</button>
+        </div>
+        
+        <!-- Review Screen -->
+        <div class="review-screen">
+            <h1>Your Answers</h1>
+            <div id="review-container">
+                <!-- Review items will be added here dynamically -->
+            </div>
+            <button id="back-to-results-btn">Back to Results</button>
+            <button id="review-restart-btn">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Quiz data - words with their sentences
+        // This can be easily modified to include different words for various difficulty levels
+        const quizData = [
+            {
+                word: "friend",
+                sentence: "My friend helped me with my homework."
+            },
+            {
+                word: "because",
+                sentence: "I was late because my alarm didn't go off."
+            },
+            {
+                word: "people",
+                sentence: "Many people enjoy reading books."
+            },
+            {
+                word: "beautiful",
+                sentence: "The garden looks beautiful in spring."
+            },
+            {
+                word: "jumping",
+                sentence: "The children were jumping on the trampoline."
+            },
+            {
+                word: "watched",
+                sentence: "We watched a film at the cinema."
+            },
+            {
+                word: "caught",
+                sentence: "She caught the ball with one hand."
+            },
+            {
+                word: "different",
+                sentence: "The twins wore different colored shirts."
+            }
+        ];
+
+        // DOM elements
+        const welcomeScreen = document.querySelector('.welcome-screen');
+        const questionScreen = document.querySelector('.question-screen');
+        const resultsScreen = document.querySelector('.results-screen');
+        const reviewScreen = document.querySelector('.review-screen');
+        const startBtn = document.getElementById('start-btn');
+        const playBtn = document.getElementById('play-btn');
+        const replayBtn = document.getElementById('replay-btn');
+        const answerInput = document.getElementById('answer-input');
+        const submitBtn = document.getElementById('submit-btn');
+        const feedback = document.getElementById('feedback');
+        const questionNumber = document.getElementById('question-number');
+        const resultsText = document.getElementById('results-text');
+        const encouragement = document.getElementById('encouragement');
+        const restartBtn = document.getElementById('restart-btn');
+        const reviewBtn = document.getElementById('review-btn');
+        const reviewContainer = document.getElementById('review-container');
+        const backToResultsBtn = document.getElementById('back-to-results-btn');
+        const reviewRestartBtn = document.getElementById('review-restart-btn');
+
+        // Quiz state
+        let currentQuestionIndex = 0;
+        let correctAnswers = 0;
+        let attempts = 0;
+        let replaysLeft = 2;
+        let speechSynthesis = window.speechSynthesis;
+        let voices = [];
+        // Track user's answers for review
+        let userAnswers = [];
+
+        // Initialize speech synthesis and get voices
+        function initSpeech() {
+            // Check if browser supports speech synthesis
+            if ('speechSynthesis' in window) {
+                // Get the voices (might be async in some browsers)
+                speechSynthesis.onvoiceschanged = function() {
+                    voices = speechSynthesis.getVoices();
+                };
+                voices = speechSynthesis.getVoices();
+            } else {
+                alert("Sorry, your browser doesn't support text to speech!");
+            }
+        }
+
+        // Speak the current word and sentence
+        function speakText() {
+            if (speechSynthesis) {
+                // Cancel any ongoing speech
+                speechSynthesis.cancel();
+                
+                const currentQuestion = quizData[currentQuestionIndex];
+                const textToSpeak = `Please spell the word ${currentQuestion.word}. ${currentQuestion.sentence}`;
+                
+                const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                
+                // Find a British female voice if available
+                let britishVoice = null;
+                
+                for (let voice of voices) {
+                    // Look for British English voice
+                    if ((voice.name.includes('UK') || voice.name.includes('British')) && 
+                        (voice.name.includes('Female'))) {
+                        britishVoice = voice;
+                        break;
+                    }
+                }
+                
+                // Fallback to any English voice if no British voice found
+                if (!britishVoice) {
+                    for (let voice of voices) {
+                        if (voice.lang.includes('en-')) {
+                            britishVoice = voice;
+                            break;
+                        }
+                    }
+                }
+                
+                // Set the voice if found
+                if (britishVoice) {
+                    utterance.voice = britishVoice;
+                }
+                
+                // Set speech properties
+                utterance.rate = 0.9; // Slightly slower for clarity
+                utterance.pitch = 1.0;
+                
+                // Speak
+                speechSynthesis.speak(utterance);
+            }
+        }
+
+        // Show the current question
+        function showQuestion() {
+            // Update question number display
+            questionNumber.textContent = `Question ${currentQuestionIndex + 1} of ${quizData.length}`;
+            
+            // Reset UI for new question
+            answerInput.value = '';
+            feedback.textContent = '';
+            feedback.className = 'feedback';
+            
+            // Reset replay count
+            replaysLeft = 2;
+            replayBtn.textContent = `Replay (${replaysLeft} left)`;
+            replayBtn.disabled = true;
+            
+            // Reset attempts
+            attempts = 0;
+            
+            // Auto-play the word and sentence after a short delay
+            setTimeout(function() {
+                speakText();
+                replayBtn.disabled = false;
+            }, 500);
+        }
+
+        // Check the user's answer
+        function checkAnswer() {
+            const userAnswer = answerInput.value.trim().toLowerCase();
+            const correctAnswer = quizData[currentQuestionIndex].word.toLowerCase();
+            
+            // Store user's answer for review
+            if (attempts === 0) {
+                userAnswers.push({
+                    questionIndex: currentQuestionIndex,
+                    word: correctAnswer,
+                    userAnswer: userAnswer,
+                    isCorrect: userAnswer === correctAnswer,
+                    attempts: attempts + 1,
+                    sentence: quizData[currentQuestionIndex].sentence
+                });
+            } else {
+                // Update the last answer if this is a retry
+                userAnswers[userAnswers.length - 1].userAnswer = userAnswer;
+                userAnswers[userAnswers.length - 1].isCorrect = userAnswer === correctAnswer;
+                userAnswers[userAnswers.length - 1].attempts = attempts + 1;
+            }
+            
+            // First attempt or retry
+            if (attempts === 0) {
+                if (userAnswer === correctAnswer) {
+                    // Correct answer
+                    feedback.textContent = "Well done! That's correct! ✓";
+                    feedback.className = 'feedback correct';
+                    correctAnswers++;
+                    
+                    // Disable input and buttons while showing feedback
+                    answerInput.disabled = true;
+                    submitBtn.disabled = true;
+                    replayBtn.disabled = true;
+                    
+                    // Move to next question after delay
+                    setTimeout(function() {
+                        moveToNextQuestion();
+                    }, 1500);
+                } else {
+                    // Incorrect answer - first attempt
+                    feedback.textContent = "Not quite right. Try once more!";
+                    feedback.className = 'feedback incorrect';
+                    attempts++;
+                    
+                    // Focus back on input for retry
+                    answerInput.focus();
+                }
+            } else {
+                // Second attempt - reveal correct answer
+                if (userAnswer === correctAnswer) {
+                    feedback.textContent = "That's right! Well done for persevering! ✓";
+                    feedback.className = 'feedback correct';
+                    correctAnswers++;
+                } else {
+                    feedback.textContent = `The correct spelling is "${correctAnswer}". Let's try the next one!`;
+                    feedback.className = 'feedback incorrect';
+                }
+                
+                // Disable input and buttons while showing feedback
+                answerInput.disabled = true;
+                submitBtn.disabled = true;
+                replayBtn.disabled = true;
+                
+                // Move to next question after delay
+                setTimeout(function() {
+                    moveToNextQuestion();
+                }, 2000);
+            }
+        }
+
+        // Move to the next question or end the quiz
+        function moveToNextQuestion() {
+            currentQuestionIndex++;
+            
+            // Enable input and buttons for next question
+            answerInput.disabled = false;
+            submitBtn.disabled = false;
+            
+            if (currentQuestionIndex < quizData.length) {
+                // Show next question
+                showQuestion();
+            } else {
+                // End of quiz - show results
+                showResults();
+            }
+        }
+
+        // Show the final results
+        function showResults() {
+            // Hide question screen and show results screen
+            questionScreen.classList.remove('active');
+            resultsScreen.classList.add('active');
+            
+            // Update results text
+            resultsText.textContent = `You got ${correctAnswers} out of ${quizData.length} correct!`;
+            
+            // Update encouragement message based on score
+            if (correctAnswers === quizData.length) {
+                encouragement.textContent = "Amazing! You're a spelling superstar!";
+            } else if (correctAnswers >= Math.floor(quizData.length * 0.75)) {
+                encouragement.textContent = "Great job! You're nearly a spelling champion!";
+            } else if (correctAnswers >= Math.floor(quizData.length * 0.5)) {
+                encouragement.textContent = "Good effort! Keep practicing to improve your spelling!";
+            } else {
+                encouragement.textContent = "Well done for trying! With more practice, you'll get even better!";
+            }
+        }
+
+        // Reset the quiz to start over
+        function resetQuiz() {
+            currentQuestionIndex = 0;
+            correctAnswers = 0;
+            attempts = 0;
+            userAnswers = [];
+            
+            // Reset screens
+            resultsScreen.classList.remove('active');
+            reviewScreen.classList.remove('active');
+            questionScreen.classList.add('active');
+            
+            // Show first question
+            showQuestion();
+        }
+        
+        // Show the review screen with all user answers
+        function showReview() {
+            // Hide results screen and show review screen
+            resultsScreen.classList.remove('active');
+            reviewScreen.classList.add('active');
+            
+            // Clear previous content
+            reviewContainer.innerHTML = '';
+            
+            // Add each answer to the review container
+            userAnswers.forEach((answer, index) => {
+                const reviewItem = document.createElement('div');
+                reviewItem.className = `review-item ${answer.isCorrect ? 'correct' : 'incorrect'}`;
+                
+                const wordElement = document.createElement('p');
+                wordElement.className = 'review-word';
+                wordElement.textContent = `${index + 1}. Word: ${answer.word}`;
+                reviewItem.appendChild(wordElement);
+                
+                const sentenceElement = document.createElement('p');
+                sentenceElement.textContent = `Sentence: ${answer.sentence}`;
+                reviewItem.appendChild(sentenceElement);
+                
+                const yourAnswerElement = document.createElement('p');
+                yourAnswerElement.textContent = `Your spelling: ${answer.userAnswer}`;
+                reviewItem.appendChild(yourAnswerElement);
+                
+                const statusElement = document.createElement('p');
+                statusElement.className = answer.isCorrect ? 'correct' : 'incorrect';
+                statusElement.textContent = answer.isCorrect ? 
+                    `✓ Correct ${answer.attempts > 1 ? '(second try)' : '(first try)'}` : 
+                    `✗ Incorrect - The correct spelling is "${answer.word}"`;
+                reviewItem.appendChild(statusElement);
+                
+                reviewContainer.appendChild(reviewItem);
+            });
+        }
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize speech synthesis
+            initSpeech();
+            
+            // Start button click
+            startBtn.addEventListener('click', function() {
+                welcomeScreen.classList.remove('active');
+                questionScreen.classList.add('active');
+                showQuestion();
+            });
+            
+            // Play button click
+            playBtn.addEventListener('click', function() {
+                speakText();
+            });
+            
+            // Replay button click
+            replayBtn.addEventListener('click', function() {
+                if (replaysLeft > 0) {
+                    replaysLeft--;
+                    replayBtn.textContent = `Replay (${replaysLeft} left)`;
+                    speakText();
+                    
+                    if (replaysLeft === 0) {
+                        replayBtn.disabled = true;
+                    }
+                }
+            });
+            
+            // Submit button click
+            submitBtn.addEventListener('click', function() {
+                checkAnswer();
+            });
+            
+            // Enter key press in input field
+            answerInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    checkAnswer();
+                }
+            });
+            
+            // Restart button click
+            restartBtn.addEventListener('click', function() {
+                resetQuiz();
+            });
+            
+            // Review button click
+            reviewBtn.addEventListener('click', function() {
+                showReview();
+            });
+            
+            // Back to results button click
+            backToResultsBtn.addEventListener('click', function() {
+                reviewScreen.classList.remove('active');
+                resultsScreen.classList.add('active');
+            });
+            
+            // Review restart button click
+            reviewRestartBtn.addEventListener('click', function() {
+                resetQuiz();
+            });
+        });
+    </script>
+</body>
+</html>
